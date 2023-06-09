@@ -13,6 +13,7 @@ from rdkit.Chem.FeatMaps import FeatMaps
 from rdkit import RDConfig
 
 import os.path as osp
+import os
 
 def read_sdf(sdf_file):
     supp = Chem.SDMolSupplier(sdf_file)
@@ -96,15 +97,15 @@ class MoleculeProperties:
         return total_sasa
     
     @staticmethod
-    def hbd(mol):
+    def calculate_hbd(mol):
         return rdMolDescriptors.CalcNumHBA(mol)
 
     @staticmethod
-    def hba(mol):
+    def calculate_hba(mol):
         return rdMolDescriptors.CalcNumHBD(mol)
     
     @staticmethod
-    def tpsa(mol):
+    def calculate_tpsa(mol):
         return rdMolDescriptors.CalcTPSA(mol)
 
     @staticmethod
@@ -156,8 +157,3 @@ class MoleculeProperties:
                 total += 1
 
         return div / total
-
-if __name__ == '__main__':
-    property_computer = MoleculeProperties()
-    mol = Chem.MolFromSmiles('CCO')
-    print(property_computer.calculate_sasa(mol))
