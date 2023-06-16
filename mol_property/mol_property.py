@@ -1,25 +1,3 @@
-import numpy as np
-from scipy.spatial.distance import cdist
-from tqdm import tqdm
-from rdkit import Chem, DataStructs
-from rdkit.Chem import Descriptors, Crippen, Lipinski, QED
-from rdkit.Chem import rdMolDescriptors
-from sascorer import calculateScore
-# from analysis.molecule_builder import get_bond_order_batch, build_molecule
-# from constants import allowed_bonds
-from espsim.electrostatics import GetMolProps, GetEspSim
-from rdkit.Chem import AllChem, rdShapeHelpers
-from rdkit.Chem.FeatMaps import FeatMaps
-from rdkit import RDConfig
-
-import os.path as osp
-import os
-
-def read_sdf(sdf_file):
-    supp = Chem.SDMolSupplier(sdf_file)
-    mols_list = [i for i in supp]
-    return mols_list
-
 class MoleculeProperties:
     '''
     Description:
@@ -42,7 +20,7 @@ class MoleculeProperties:
         calculate_shape: (3D) calculate the shape similarity between the molecule and the target
         calculate_rc_score: (3D) calculate the pharmacophore score combined with shape of the molecule
 
-        calculate_diversity: calculate the diversity of a batch molecules
+        calculate_diversity: (2D) calculate the diversity of a batch molecules
     '''
     def __init__(self):
         fdefName = 'BaseFeatures.fdef'
@@ -113,10 +91,30 @@ class MoleculeProperties:
         return Descriptors.MolWt(mol)
     
     @staticmethod
+    def calculate_fps(mols):
+        fps = []
+        for mol in mols:
+            try:
+                fp = Chem.RDKFingerprint(mol)
+                fps.append(fp)
+            except Exception as e:
+                print(e)
+        return fps
+
+    @staticmethod
     def calculate_similarity(mol_a, mol_b):
         fp1 = Chem.RDKFingerprint(mol_a)
         fp2 = Chem.RDKFingerprint(mol_b)
         return DataStructs.TanimotoSimilarity(fp1, fp2)
+
+    @staticmethod
+    def calculate_similarity_from_fps(fps_a, fps_b):
+        sims = []
+        for fp_a in fps_a:
+            for fp_b in fps_b:
+                sim = DataStructs.TanimotoSimilarity(fp_a, fp_b)
+                sims.append(sim)
+        return sims
 
     @staticmethod
     def calculate_esp(mol_a, mol_b):
@@ -151,9 +149,10 @@ class MoleculeProperties:
 
         div = 0
         total = 0
-        for i in range(len(batch_mols)):
-            for j in range(i + 1, len(batch_mols)):
-                div += 1 - cls.similarity(batch_mols[i], batch_mols[j])
+        batch_fps = cls.calculate_fps(batch_mols)
+        for i in range(len(batch_fps)):
+            for j in range(i + 1, len(batch_fps)):
+                div += 1 - cls.calculate_similarity_from_fps([batch_fps[i]], [batch_fps[j]])[0]
                 total += 1
 
         return div / total
